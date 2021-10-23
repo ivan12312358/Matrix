@@ -94,6 +94,7 @@ struct Fraction
 		{
 			if (num < Elem{1} || denom < Elem{1})
 			{
+				numerator  /= denominator;
 				denominator = Elem{1};
 				return;
 			}
@@ -264,7 +265,7 @@ int main()
 	size_t size{0};
 	std::cin >> size;
 
-	Matrix<int> m{size};
+	Matrix<double> m{size};
 	m.Fill();
 
 	std::cout << m.Determinant() << std::endl;

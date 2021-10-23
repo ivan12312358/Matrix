@@ -6,7 +6,7 @@
 template <typename Elem>
 bool is_equal(const Elem& a, const Elem& b)
 {
-	static const double epsilon = 1e-8;
+	static const double epsilon = 1e-6;
 
 	if (a > b) return a - b <= epsilon;
 
@@ -19,7 +19,16 @@ struct Fraction
 	Elem numerator;
 	Elem denominator;
 
-	Fraction(Elem num = 0, Elem denom = 1): numerator{num}, denominator{denom} { Reduction(); }
+	Fraction(Elem num = 0, Elem denom = 1): numerator{num}, denominator{denom} 
+	{ 
+		if (denominator < 0)
+		{
+			denominator *= Elem{-1};
+			numerator 	*= Elem{-1};
+		}
+	
+		Reduction(); 
+	}
 
 	Fraction<Elem> operator* (const Fraction<Elem>& other) const
 	{
@@ -35,9 +44,24 @@ struct Fraction
 
 	Fraction<Elem> operator- (const Fraction<Elem>& other) const
 	{
-		return Fraction<Elem> {numerator   * other.denominator -
-							   denominator * other.numerator,
-							   denominator * other.denominator};
+		Fraction<Elem> multiple {other.denominator, denominator};
+		multiple.Reduction();
+
+		return Fraction<Elem> {numerator   	   * multiple.numerator -
+							   other.numerator * multiple.denominator,
+							   denominator 	   * multiple.numerator};
+	}
+
+	Fraction<Elem> operator+ (const Fraction<Elem>& other) const
+	{
+		Fraction<Elem> multiple {other.denominator, denominator};
+		multiple.Reduction();
+
+		std::cout << multiple << std::endl;
+
+		return Fraction<Elem> {numerator   	   * multiple.numerator +
+							   other.numerator * multiple.denominator,
+							   denominator 	   * multiple.numerator};
 	}
 
 	bool operator== (const Fraction<Elem>& other) const
@@ -53,23 +77,27 @@ struct Fraction
 
 	void operator+= (const Fraction<Elem>& other)
 	{
-		numerator 	= numerator   * other.denominator + denominator * other.numerator;
-		denominator = denominator * other.denominator;
-
-		Reduction();
+		*this = *this + other;
 	}
 
 	void Reduction()
 	{
-		if (is_equal<Elem>(numerator, Elem{0}) || is_equal<Elem>(denominator, Elem{0}))
+		if (is_equal<Elem>(numerator, Elem{0}))
+		{
+			denominator = Elem{1};
 			return;
-		if (numerator < Elem{1} || denominator < Elem{1})
-			return;
+		}
 
 		Elem num{std::abs(numerator)}, denom{std::abs(denominator)};
 
 		while (!is_equal<Elem>(num, denom))
 		{
+			if (num < Elem{1} || denom < Elem{1})
+			{
+				denominator = Elem{1};
+				return;
+			}
+
 			if (num > denom) 	  
 				num -= denom;
 			else if (denom > num) 
@@ -124,7 +152,7 @@ public:
 		return *this;
 	}
 
-	void operator -= (const Row<Elem>& other)
+	void operator-= (const Row<Elem>& other)
 	{
 		for (size_t i = 0; i < r_size; i++)
 			pnt[i] = pnt[i] - other.pnt[i];
@@ -166,8 +194,9 @@ public:
 			std::cin >> elem[i][j];			
 	}
 
-	void Gauss()
+	int Gauss()
 	{
+		int sign{1};
 		size_t n_zero{0};
 		
 		for (size_t i = 0; i < size(); i++)
@@ -178,15 +207,19 @@ public:
 					if (!(elem[n_zero][i] == Elem{0}))
 					{
 						std::swap(elem[i], elem[n_zero]);
+						sign *= -1;
 						break;
 					}
 
-				if (n_zero == size()) return;
+				if (n_zero == size()) 
+					return 0;
 			}
 
 			for (size_t j = i + 1; j < size(); j++)
-				elem[j] -= elem[i] * (elem[j][i] / elem[i][i]);
+				elem[j] -= elem[i] * (elem[j][i] / elem[i][i]);		
 		}
+
+		return sign;
 	}
 
 	Elem Determinant() const
@@ -197,18 +230,17 @@ public:
 		for (size_t j = 0; j < size(); j++)
 			matrix[i][j].numerator = elem[i][j];
 
-		matrix.Gauss();
-		matrix.Print();
+		int sign = matrix.Gauss();
+
+		if (sign == 0) 
+			return Elem{0};
 
 		Fraction<Elem> determinant{1};
 
 		for (size_t i = 0; i < matrix.size(); i++)
 			determinant = determinant * matrix[i][i];
 
-		if (determinant.denominator == Elem{0})
-			return Elem{0};
-
-		return determinant.numerator / determinant.denominator;
+		return determinant.numerator / determinant.denominator * sign;
 	}
 
 	void Print() const
@@ -229,7 +261,10 @@ public:
 
 int main()
 {
-	Matrix<int> m{4};
+	size_t size{0};
+	std::cin >> size;
+
+	Matrix<int> m{size};
 	m.Fill();
 
 	std::cout << m.Determinant() << std::endl;

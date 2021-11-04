@@ -44,24 +44,24 @@ struct Fraction
 
 	Fraction<Elem> operator- (const Fraction<Elem>& other) const
 	{
-		Fraction<Elem> multiple {other.denominator, denominator};
-		multiple.Reduction();
+		Fraction<Elem> multiplier {other.denominator, denominator};
+		multiplier.Reduction();
 
-		return Fraction<Elem> {numerator   	   * multiple.numerator -
-							   other.numerator * multiple.denominator,
-							   denominator 	   * multiple.numerator};
+		return Fraction<Elem> {numerator   	   * multiplier.numerator -
+							   other.numerator * multiplier.denominator,
+							   denominator 	   * multiplier.numerator};
 	}
 
 	Fraction<Elem> operator+ (const Fraction<Elem>& other) const
 	{
-		Fraction<Elem> multiple {other.denominator, denominator};
-		multiple.Reduction();
+		Fraction<Elem> multiplier {other.denominator, denominator};
+		multiplier.Reduction();
 
-		std::cout << multiple << std::endl;
+		std::cout << multiplier << std::endl;
 
-		return Fraction<Elem> {numerator   	   * multiple.numerator +
-							   other.numerator * multiple.denominator,
-							   denominator 	   * multiple.numerator};
+		return Fraction<Elem> {numerator   	   * multiplier.numerator +
+							   other.numerator * multiplier.denominator,
+							   denominator 	   * multiplier.numerator};
 	}
 
 	bool operator== (const Fraction<Elem>& other) const
@@ -122,7 +122,6 @@ Fraction<Elem> operator- (const Elem& elem, const Fraction<Elem>& frac)
 	return 	Fraction<Elem> {elem} - frac;
 }
 
-
 template <typename Elem>
 class Row
 {
@@ -159,12 +158,28 @@ public:
 			pnt[i] = pnt[i] - other.pnt[i];
 	}
 
+	void operator+= (const Row<Elem>& other)
+	{
+		for (size_t i = 0; i < r_size; i++)
+			pnt[i] = pnt[i] + other.pnt[i];
+	}
+
 	Row<Elem> operator* (const Elem& elem)
 	{
 		Row<Elem> row{size()};
 
 		for (size_t i = 0; i < size(); i++)
 			row[i] = pnt[i] * elem;
+	
+		return row;
+	}
+
+	Row<Elem> operator/ (const Elem& elem)
+	{
+		Row<Elem> row{size()};
+
+		for (size_t i = 0; i < size(); i++)
+			row[i] = pnt[i] / elem;
 	
 		return row;
 	}
@@ -244,31 +259,20 @@ public:
 		return determinant.numerator / determinant.denominator * sign;
 	}
 
-	void Print() const
-	{
-		for (size_t i = 0; i < elem.size(); i++)
-		{
-			for (size_t j = 0; j < elem[i].size(); j++)
-				std::cout << elem[i][j] << " ";
-
-			std::cout << std::endl;
-		}
-	}
-
 	size_t size() const { return elem.size(); }
 
 	Row<Elem>& operator[] (size_t it) const { return elem[it]; }
 };
 
-int main()
+template <typename Elem>
+std::ostream& operator << (std::ostream& out, const Matrix<Elem>& matrix)
 {
-	size_t size{0};
-	std::cin >> size;
+	for (size_t i = 0; i < matrix.size(); i++)
+	{
+		for (size_t j = 0; j < matrix.size(); j++)
+			out << matrix[i][j] << " ";
 
-	Matrix<double> m{size};
-	m.Fill();
-
-	std::cout << m.Determinant() << std::endl;
-
-	return 0;
+		out << std::endl;
+	}
+	return out;
 }

@@ -1,5 +1,5 @@
-CXX = g++
-CXXFLAGS = -o $@
+CXX ?= g++
+CXXFLAGS ?= -o $@
 
 matrix: main.cpp matrix.hpp
 	$(CXX) $(CXXFLAGS) $<

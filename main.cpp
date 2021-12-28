@@ -6,6 +6,7 @@ int main()
 	std::cin >> size;
 
 	Matrix<double> m{size};
+
 	m.Fill();
 
 	std::cout << m.Determinant() << std::endl;

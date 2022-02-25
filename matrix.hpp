@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cmath>
-
+#include <exception>
 
 bool is_equal(const double a, const double b)
 {
@@ -16,28 +16,43 @@ namespace matrix
 	class Row
 	{
 	private:
-		Elem* pnt{nullptr};
 		size_t r_size{0};
+		Elem* pnt{nullptr};
 
 	public:
-		Row() = default;
+		Row<Elem>() = default;
 
-		explicit Row(size_t r_size): r_size{r_size}, pnt { new Elem[r_size]{} } {}
+		explicit Row<Elem>(size_t r_size): r_size{r_size}, pnt { new Elem[r_size]{} } {}
 
-		Row(const Row<Elem>& other) = delete;
-		Row<Elem>& operator= (const Row<Elem>& other) = delete;
+		Row<Elem>(const Row<Elem>& other) noexcept { *this = other; } 
 
-		Row(Row<Elem>&& other) noexcept: 
-			r_size{other.r_size}, pnt{other.pnt} { other.pnt = nullptr; }
-
-		Row<Elem>& operator= (Row&& other) noexcept
+		Row<Elem>& operator= (const Row<Elem>& other) noexcept
 		{
 			if (this != &other)
 			{
-				delete[] pnt;
+				try {
+					Row<Elem> tmp{other.size()};
+
+					for (size_t i = 0; i < tmp.r_size; ++i)
+						tmp.pnt[i] = other.pnt[i];
+
+					std::swap(tmp, *this);	
+				} catch(const std::exception& e) {
+					std::cerr << e.what() << '\n';
+				}
+			}
+			return *this;
+		}
+
+		Row<Elem>(Row<Elem>&& other) noexcept: 
+			r_size{other.r_size}, pnt{other.pnt} { other.pnt = nullptr; }
+
+		Row<Elem>& operator= (Row<Elem>&& other) noexcept
+		{
+			if (this != &other)
+			{
 				r_size = other.r_size;
-				pnt    = other.pnt;
-				other.pnt = nullptr;
+				std::swap(pnt, other.pnt);
 			}
 			return *this;
 		}
@@ -90,6 +105,8 @@ namespace matrix
 
 		Elem& operator[] (size_t it) const { return pnt[it]; }
 
+		void novalid() { pnt = nullptr; }
+
 		~Row() { delete[] pnt; }
 	};
 
@@ -98,39 +115,38 @@ namespace matrix
 	{
 	protected:
 		Row<Row<Elem>> elem;
-
 	public:
-		Matrix(size_t row = 0, size_t column = 0): elem{row}
+		Matrix(size_t row = 0): elem{row}
 		{
-			if (column == 0) 
-				column = row;
-
 			for (size_t i = 0; i < row; i++)
-				elem[i] = Row<Elem>{column};
+				elem[i] = Row<Elem>{row};
 		}
 
-		Matrix(const Matrix<Elem>& other) { *this = other; }
+		template <typename T>
+		Matrix(const Matrix<T>& other)
+		{
+			Matrix<Elem> tmp{other.size()};
 
-		Matrix(Matrix<Elem>&& other): elem{other.elem} {}
+			for (size_t i = 0; i < other.size(); i++)
+			for (size_t j = 0; j < other[i].size(); j++)
+				tmp[i][j] = other[i][j];
 
-		Matrix<Elem>& operator= (const Matrix<Elem>& other)
+			std::swap(tmp, *this);
+		}
+
+		Matrix(const Matrix<Elem>& other) = default;
+
+		Matrix(Matrix<Elem>&& other) = default;
+
+		Matrix<Elem>& operator= (const Matrix<Elem>& other) noexcept
 		{
 			if (this != &other)
-			{
-				elem = Row<Row<Elem>>{other.size()};
-
-				for (size_t i = 0; i < other.size(); i++)
-				{
-					elem[i] = Row<Elem>{other[i].size()};
-					for (size_t j = 0; j < other[i].size(); j++)
-						elem[i][j] = other[i][j];
-				}
-			}
+				elem = other.elem;
 
 			return *this;
 		}
 
-		Matrix<Elem>& operator= (Matrix<Elem>&& other)
+		Matrix<Elem>& operator= (Matrix<Elem>&& other) noexcept
 		{
 			if (this != &other)
 				elem = std::move(other.elem);
@@ -178,11 +194,11 @@ namespace matrix
 			return multipliers;
 		}
 
-		Elem Determinant()
+		Elem Determinant() const
 		{
 			Matrix<double> matrix{*this};
 
-			Elem det = Gauss();
+			Elem det = matrix.Gauss();
 
 			return det;
 		}
@@ -195,11 +211,96 @@ namespace matrix
 	};
 
 	template <typename Elem>
+	class LazyMatrix: Matrix<Elem>
+	{
+	public:
+		int* copies;
+	public:
+		using Matrix<Elem>::elem;
+
+		LazyMatrix(size_t row = 0, size_t column = 0): Matrix<Elem> {row, column}, copies{new int{0}} {}
+
+		LazyMatrix(const LazyMatrix<Elem>& other) { *this = other; }
+
+		LazyMatrix(LazyMatrix<Elem>&& other) { *this = std::move(other); }
+
+		LazyMatrix<Elem>& operator= (const LazyMatrix<Elem>& other)
+		{
+			std::cout << "asdasd\n";
+
+			if (this != &other)
+			{
+				if (copies == nullptr) 
+				{ ; }
+				else if (*copies == 0)
+					delete copies;
+				else
+				{
+					(*copies)--;
+					elem.novalid();
+				}
+
+				elem   = other.elem;
+				copies = other.copies;
+				(*copies)++;
+			}
+
+			return *this;
+		}
+
+		LazyMatrix<Elem>& operator= (LazyMatrix<Elem>&& other)
+		{
+			if (this != &other)
+			{
+				if (copies == nullptr) 
+				{ ; }
+				else if (*copies == 0)
+					delete copies;
+				else
+				{
+					(*copies)--;
+					elem.novalid();
+				}
+
+				elem   = std::move(other.elem);
+				copies = other.copies;
+				other.copies = nullptr;
+			}
+
+			return *this;
+		}
+
+		~LazyMatrix()
+		{
+			if (*copies != 0)
+			{
+				*(copies)--;
+				elem.novalid();
+				return;
+			}
+
+			delete copies;
+		}
+	};
+
+	template <typename Elem>
 	void Fill(std::istream& input, const Matrix<Elem>& matrix)
 	{
+		Elem elem{};
+
 		for (size_t i = 0; i < matrix.size(); i++)
 		for (size_t j = 0; j < matrix[i].size(); j++)
-			input >> matrix[i][j];
+		{
+			input >> elem;
+
+			if (input.good())
+				matrix[i][j] = elem;
+			else
+			{
+				std::cerr << "bad input element\n";
+				return;
+			}
+		}
 	}
 
 

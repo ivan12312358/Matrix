@@ -26,6 +26,8 @@ namespace matrix
 
 		Row<Elem>(const Row<Elem>& other) noexcept { *this = other; } 
 
+		Row<Elem>(Row<Elem>&& other) noexcept { *this = std::move(other); }
+
 		Row<Elem>& operator= (const Row<Elem>& other) noexcept
 		{
 			if (this != &other)
@@ -44,14 +46,11 @@ namespace matrix
 			return *this;
 		}
 
-		Row<Elem>(Row<Elem>&& other) noexcept: 
-			r_size{other.r_size}, pnt{other.pnt} { other.pnt = nullptr; }
-
 		Row<Elem>& operator= (Row<Elem>&& other) noexcept
 		{
 			if (this != &other)
 			{
-				r_size = other.r_size;
+				std::swap(r_size, other.r_size);
 				std::swap(pnt, other.pnt);
 			}
 			return *this;
@@ -105,10 +104,16 @@ namespace matrix
 
 		Elem& operator[] (size_t it) const { return pnt[it]; }
 
-		void novalid() { pnt = nullptr; }
-
 		~Row() { delete[] pnt; }
-	};
+
+		void novalid() { pnt = nullptr; r_size = 0; }
+
+		void lazycopy(const Row<Elem>& other)
+		{ 
+			r_size = other.r_size;
+			pnt    = other.pnt;
+		}
+};
 
 	template <typename Elem>
 	class Matrix
@@ -127,32 +132,20 @@ namespace matrix
 		{
 			Matrix<Elem> tmp{other.size()};
 
-			for (size_t i = 0; i < other.size(); i++)
-			for (size_t j = 0; j < other[i].size(); j++)
+			for (size_t i = 0; i < other.size(); ++i)
+			for (size_t j = 0; j < other[i].size(); ++j)
 				tmp[i][j] = other[i][j];
 
 			std::swap(tmp, *this);
 		}
 
-		Matrix(const Matrix<Elem>& other) = default;
+		Matrix(const Matrix<Elem>& other) noexcept = default;
 
-		Matrix(Matrix<Elem>&& other) = default;
+		Matrix(Matrix<Elem>&& other) noexcept = default;
 
-		Matrix<Elem>& operator= (const Matrix<Elem>& other) noexcept
-		{
-			if (this != &other)
-				elem = other.elem;
+		Matrix<Elem>& operator= (const Matrix<Elem>& other) noexcept = default;
 
-			return *this;
-		}
-
-		Matrix<Elem>& operator= (Matrix<Elem>&& other) noexcept
-		{
-			if (this != &other)
-				elem = std::move(other.elem);
-
-			return *this;
-		}
+		Matrix<Elem>& operator= (Matrix<Elem>&& other) noexcept = default;
 
 		Elem Gauss()
 		{
@@ -211,14 +204,14 @@ namespace matrix
 	};
 
 	template <typename Elem>
-	class LazyMatrix: Matrix<Elem>
+	class LazyMatrix final: public Matrix<Elem>
 	{
-	public:
-		int* copies;
+	private:
+		int* copies{nullptr};
 	public:
 		using Matrix<Elem>::elem;
 
-		LazyMatrix(size_t row = 0, size_t column = 0): Matrix<Elem> {row, column}, copies{new int{0}} {}
+		LazyMatrix(size_t row = 0): Matrix<Elem> {row}, copies{new int{0}} {}
 
 		LazyMatrix(const LazyMatrix<Elem>& other) { *this = other; }
 
@@ -226,59 +219,81 @@ namespace matrix
 
 		LazyMatrix<Elem>& operator= (const LazyMatrix<Elem>& other)
 		{
-			std::cout << "asdasd\n";
-
-			if (this != &other)
+		   	if ((this != &other) && (copies != other.copies))
 			{
-				if (copies == nullptr) 
-				{ ; }
-				else if (*copies == 0)
-					delete copies;
-				else
+				Row<Row<Elem>> tmp;
+				tmp.lazycopy(other.elem);
+
+				if (copies && (*copies != 0))
 				{
 					(*copies)--;
 					elem.novalid();
 				}
+				else delete copies;
 
-				elem   = other.elem;
+				std::swap(tmp, elem);
 				copies = other.copies;
 				(*copies)++;
 			}
-
 			return *this;
 		}
 
 		LazyMatrix<Elem>& operator= (LazyMatrix<Elem>&& other)
 		{
-			if (this != &other)
+			if ((this != &other) && (copies != other.copies))
 			{
-				if (copies == nullptr) 
-				{ ; }
-				else if (*copies == 0)
-					delete copies;
-				else
+				if (copies && (*copies != 0))
 				{
 					(*copies)--;
 					elem.novalid();
+					copies = nullptr;
 				}
 
-				elem   = std::move(other.elem);
-				copies = other.copies;
-				other.copies = nullptr;
+				elem = std::move(other.elem);
+				std::swap(copies, other.copies);
 			}
-
 			return *this;
+		}
+
+		LazyMatrix& operator += (const LazyMatrix<Elem>& other)
+		{
+			deepcopy();
+
+			for (size_t i = 0; i < elem.size(); ++i)
+				elem[i] += other.elem[i];
+	
+			return *this;
+		}
+
+		LazyMatrix& operator -= (const LazyMatrix<Elem>& other)
+		{
+			deepcopy();
+
+			for (size_t i = 0; i < elem.size(); ++i)
+				elem[i] -= other.elem[i];
+	
+			return *this;
+		}
+
+		void deepcopy()
+		{
+			LazyMatrix<Elem> tmp(elem.size());
+
+			for (size_t i = 0; i < elem.size(); ++i)
+			for (size_t j = 0; j < elem[i].size(); ++j)
+				tmp[i][j] = elem[i][j];
+
+			std::swap(tmp, *this);
 		}
 
 		~LazyMatrix()
 		{
-			if (*copies != 0)
+			if (copies && (*copies != 0))
 			{
-				*(copies)--;
+				(*copies)--;
 				elem.novalid();
 				return;
 			}
-
 			delete copies;
 		}
 	};
@@ -303,7 +318,6 @@ namespace matrix
 		}
 	}
 
-
 	template <typename Elem>
 	std::ostream& operator << (std::ostream& out, const Matrix<Elem>& matrix)
 	{
@@ -316,5 +330,4 @@ namespace matrix
 		}
 		return out;
 	}
-
 }

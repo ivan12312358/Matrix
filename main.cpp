@@ -10,19 +10,5 @@ int main()
 
 	std::cout << m.Determinant() << std::endl;
 
-/* 	matrix::LazyMatrix<int> a{20};
-	
-	matrix::LazyMatrix<int> b{2};
-	matrix::LazyMatrix<int> c{2};
-
-	matrix::Fill(std::cin, b);
-	matrix::Fill(std::cin, c);
-
-	a = b;
-	a += c;
-
-	std::cout << a;
-	std::cout << b;
- */
 	return 0;
 }

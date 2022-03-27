@@ -15,14 +15,14 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 
 add_executable(
-	TestLazyMatrix
-	TestLazyMatrix
+	TestMatrix
+	TestMatrix
 )
 
 target_link_libraries(
-	TestLazyMatrix
+	TestMatrix
 	gtest_main
 )
 
 include(GoogleTest)
-gtest_discover_tests(TestLazyMatrix)
+gtest_discover_tests(TestMatrix)

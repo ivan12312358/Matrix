@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <cmath>
-#include <exception>
 
 bool is_equal(const double a, const double b)
 {
@@ -24,24 +23,28 @@ namespace matrix
 
 		explicit Row<Elem>(size_t r_size): r_size{r_size}, pnt { new Elem[r_size]{} } {}
 
-		Row<Elem>(const Row<Elem>& other) noexcept { *this = other; }
+		Row<Elem>(const Row<Elem>& other)
+		{
+			Row<Elem> tmp(other.size());
 
-		Row<Elem>(Row<Elem>&& other) noexcept { *this = std::move(other); }
+			for (size_t i = 0; i < tmp.r_size; ++i)
+				tmp.pnt[i] = other.pnt[i];
 
-		Row<Elem>& operator = (const Row<Elem>& other) noexcept
+			std::swap(tmp, *this);	
+		}
+
+		Row<Elem>(Row<Elem>&& other) noexcept 
+		{
+			std::swap(r_size, other.r_size);
+			std::swap(pnt, other.pnt);
+		}
+
+		Row<Elem>& operator = (const Row<Elem>& other)
 		{
 			if (this != &other)
 			{
-				try {
-					Row<Elem> tmp{other.size()};
-
-					for (size_t i = 0; i < tmp.r_size; ++i)
-						tmp.pnt[i] = other.pnt[i];
-
-					std::swap(tmp, *this);	
-				} catch(const std::exception& e) {
-					std::cerr << e.what() << '\n';
-				}
+				Row<Elem> tmp(other);
+				std::swap(tmp, *this);
 			}
 			return *this;
 		}
@@ -118,7 +121,17 @@ namespace matrix
 
 		bool operator == (const Row<Elem>& other) const { return pnt == other.pnt; }
 
-		bool operator != (const Row<Elem>& other) const { return pnt != other.pnt; }
+		bool is_same(const Row<Elem>& other) const
+		{
+			if (r_size != other.r_size)
+				return false;
+
+			for (size_t it = 0; it < r_size; ++it)
+				if (pnt[it] != other.pnt[it])
+					return false;
+
+			return true;
+		}
 
 		size_t size() const { return r_size; }
 

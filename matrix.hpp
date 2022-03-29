@@ -62,7 +62,7 @@ namespace matrix
 		Row<Elem>& operator -= (const Row<Elem>& other)
 		{
 			for (size_t i = 0; i < r_size; i++)
-				pnt[i] = pnt[i] - other.pnt[i];
+				pnt[i] -= other.pnt[i];
 
 			return *this;
 		}
@@ -78,7 +78,7 @@ namespace matrix
 		Row<Elem>& operator /= (const Elem& elem)
 		{
 			for (size_t i = 0; i < size(); i++)
-				pnt[i] = pnt[i] / elem;
+				pnt[i] /= elem;
 		
 			return *this;
 		}
@@ -93,28 +93,28 @@ namespace matrix
 
 		Row<Elem> operator - (const Row<Elem>& other) const
 		{
-			Row<Elem> row{size()};
+			Row<Elem> row{*this};
 			row -= other;
 			return row;
 		}
 
 		Row<Elem> operator + (const Row<Elem>& other) const
 		{
-			Row<Elem> row{size()};
+			Row<Elem> row{*this};
 			row += other;
 			return row;
 		}
 
 		Row<Elem> operator * (const Elem& elem) const
 		{
-			Row<Elem> row{size()};
+			Row<Elem> row{*this};
 			row *= elem;
 			return row;
 		}
 
 		Row<Elem> operator / (const Elem& elem) const
 		{
-			Row<Elem> row{size()};
+			Row<Elem> row{*this};
 			row /= elem;		
 			return row;
 		}
